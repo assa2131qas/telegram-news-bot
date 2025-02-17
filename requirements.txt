@@ -1,0 +1,4 @@
+aiogram
+feedparser
+deep-translator
+emoji
