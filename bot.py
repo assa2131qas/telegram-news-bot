@@ -5,8 +5,8 @@ from deep_translator import GoogleTranslator
 from aiogram import Bot, Dispatcher
 
 # === НАСТРОЙКИ ===
-TOKEN = AAFxyXC2gGMMxu5Z3KVw5BVvYJ75Db2m85c  # Вставь токен из BotFather
-RSS_URL = "https://cryptopanic.com/news/rss/?filter=important&currencies=BTC,ETH"
+TOKEN = "AAFxyXC2gGMMxu5Z3KVw5BVvYJ75Db2m85c"   # Вставь токен из BotFather
+RSS_URL = "https://cryptopanic.com/news/rss/"
 CHANNEL_ID = "-1002447063110"  # Или Chat ID, если канал приватный
 
 bot = Bot(token=TOKEN)
