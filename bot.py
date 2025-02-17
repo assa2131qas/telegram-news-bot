@@ -10,7 +10,7 @@ RSS_URL = "https://cryptopanic.com/news/rss/"
 CHANNEL_ID = "-1002447063110"  # Или Chat ID, если канал приватный
 
 bot = Bot(token=TOKEN)
-dp = Dispatcher(bot)
+dp = Dispatcher()
 
 # Список отправленных новостей (чтобы не дублировать)
 sent_news = set()
