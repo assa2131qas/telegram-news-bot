@@ -8,7 +8,7 @@ from telegram import Bot
 TOKEN = "7414890925:AAFxyXC2gGMMxu5Z3KVw5BVvYJ75Db2m85c"
 CHANNEL_ID = "-1002447063110"
 NEWS_URL = "https://ru.investing.com/news/cryptocurrency-news"
-LAST_NEWS_TITLE = ""
+LAST_NEWS_TITLE = None
 
 # === ФУНКЦИИ ===
 def get_latest_news():
@@ -50,7 +50,7 @@ def send_to_telegram(news):
 
 
 if __name__ == "__main__":
-    global LAST_NEWS_TITLE
+    LAST_NEWS_TITLE = None
     while True:
         news = get_latest_news()
         if news and news["title"] != LAST_NEWS_TITLE:
