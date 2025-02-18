@@ -1,6 +1,8 @@
-import feedparser
+import requests
 import asyncio
 import logging
+import feedparser
+from deep_translator import GoogleTranslator
 from aiogram import Bot, Dispatcher
 from aiogram.enums import ParseMode
 from datetime import datetime, timedelta
@@ -14,86 +16,88 @@ CHANNEL_ID = "-1002447063110"
 CHANNEL_NAME = "CryptoShuk"
 CHANNEL_LINK = "https://t.me/CryptoShuk"
 
-
-# RSS-канал CryptoPanic (главные новости)
-RSS_URL = "https://cryptopanic.com/news/rss/"
-
-# Telegram Bot
+CRYPTO_NEWS_RSS = "https://cryptopanic.com/news/rss/"  # RSS-канал CryptoPanic
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
-# Список отправленных новостей
-sent_news = set()
+sent_news = set()  # Хранение уже отправленных новостей
 
-def parse_time(time_text):
-    """
-    Преобразует текст времени новости в объект datetime.
-    Например: "1 час назад", "42 мин. назад", "17 фев 2024".
-    """
-    now = datetime.utcnow()
+# === ФУНКЦИЯ ПЕРЕВОДА ===
+def translate_text(text):
+    try:
+        return GoogleTranslator(source="auto", target="iw").translate(text)
+    except Exception as e:
+        logging.error(f"Ошибка перевода: {e}")
+        return text  # Если ошибка перевода, возвращаем оригинал
 
-    if "minute" in time_text:
-        minutes = int(time_text.split()[0])
-        return now - timedelta(minutes=minutes)
-    elif "hour" in time_text:
-        hours = int(time_text.split()[0])
-        return now - timedelta(hours=hours)
-    else:
-        return now  # Если формат неизвестен, считаем новость свежей
+# === ПАРСИНГ НОВОСТЕЙ С ПРОВЕРКОЙ ВРЕМЕНИ ===
+def get_crypto_news():
+    try:
+        feed = feedparser.parse(CRYPTO_NEWS_RSS)
+        news_list = []
 
-async def fetch_cryptopanic_news():
-    """ Получение новостей из CryptoPanic RSS """
-    feed = feedparser.parse(RSS_URL)
-    new_articles = []
+        for entry in feed.entries[:5]:  # Берём только 5 последних новостей
+            title = entry.title
+            summary = entry.summary
+            link = entry.link
+            published_time = entry.published_parsed
 
-    for entry in feed.entries[:10]:  # Берем 10 последних новостей
-        title = entry.title
-        summary = entry.summary if "summary" in entry else ""
+            news_time = datetime(*published_time[:6])  # Конвертация времени новости
+            time_diff = datetime.utcnow() - news_time
 
-        # Проверяем возраст новости
-        news_time = parse_time(entry.published) if "published" in entry else datetime.utcnow()
-        time_diff = datetime.utcnow() - news_time
+            if time_diff > timedelta(hours=2):  # Пропускаем новости старше 2 часов
+                logging.info(f"⏳ Пропущена старая новость ({time_diff}): {title}")
+                continue
 
-        if time_diff > timedelta(hours=2):  # Фильтруем старые новости
-            logging.info(f"⏳ Пропущена новость (старая, {time_diff}): {title}")
+            translated_title = translate_text(title)
+            translated_summary = translate_text(summary)
+
+            news_list.append({
+                "title": translated_title,
+                "summary": translated_summary,
+                "link": link,
+                "time": news_time
+            })
+
+        logging.info(f"✅ Найдено {len(news_list)} новых статей.")
+        return news_list
+
+    except Exception as e:
+        logging.error(f"❌ Ошибка получения новостей: {e}")
+        return []
+
+# === ОТПРАВКА НОВОСТЕЙ В TELEGRAM ===
+async def send_crypto_news():
+    news = get_crypto_news()
+    
+    if not news:
+        logging.info("🔎 Проверка завершена: новых новостей нет.")
+        return
+
+    for article in news:
+        news_id = article["title"]
+        if news_id in sent_news:
+            logging.info(f"🔄 Новость уже отправлена: {news_id}")
             continue  
 
-        # Проверяем, было ли уже отправлено
-        if title in sent_news:
-            logging.info(f"🔄 Новость уже отправлена: {title}")
-            continue  
+        sent_news.add(news_id)
 
-        sent_news.add(title)  # Запоминаем отправленные новости
-
-        # Формируем сообщение
-        text = f"📰 *{title}*\n📖 {summary}\n\n" \
+        text = f"📰 *{article['title']}*\n📊 {article['summary']}\n\n" \
+               f"[Читать далее]({article['link']})\n\n" \
                f"____________\n[{CHANNEL_NAME}]({CHANNEL_LINK})"
 
-        new_articles.append(text)
+        try:
+            await bot.send_message(chat_id=CHANNEL_ID, text=text, parse_mode=ParseMode.MARKDOWN)
+            logging.info(f"📤 Отправлена новость: {article['title']}")
 
-    return new_articles
+        except Exception as e:
+            logging.error(f"❌ Ошибка отправки новости в Telegram: {e}")
 
-async def send_news():
-    """ Отправка новостей в Telegram """
-    news_list = await fetch_cryptopanic_news()
-
-    if not news_list:
-        logging.info("🔎 Проверка завершена: новых новостей нет.")
-    else:
-        for news in news_list:
-            try:
-                await bot.send_message(chat_id=CHANNEL_ID, text=news, parse_mode=ParseMode.MARKDOWN)
-                await asyncio.sleep(3)  # Пауза между сообщениями
-                logging.info(f"📤 Отправлена новость: {news.split('*')[1]}")  # Лог заголовка
-            except Exception as e:
-                logging.error(f"❌ Ошибка отправки сообщения: {e}")
-
+# === ГЛАВНАЯ ФУНКЦИЯ ===
 async def main():
-    """ Основной цикл работы бота """
     while True:
-        await send_news()
-        await asyncio.sleep(300)  # Проверяем каждые 5 минут
+        await send_crypto_news()
+        await asyncio.sleep(300)  # Проверка новостей каждые 5 минут
 
 if __name__ == "__main__":
-    logging.info("🚀 Бот запущен и проверяет новости!")
     asyncio.run(main())
