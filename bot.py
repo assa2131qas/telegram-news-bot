@@ -1,12 +1,14 @@
+import time
 import requests
 from bs4 import BeautifulSoup
-from googletrans import Translator
+from deep_translator import GoogleTranslator
 from telegram import Bot
 
 # === НАСТРОЙКИ ===
 TOKEN = "7414890925:AAFxyXC2gGMMxu5Z3KVw5BVvYJ75Db2m85c"
 CHANNEL_ID = "-1002447063110"
 NEWS_URL = "https://ru.investing.com/news/cryptocurrency-news"
+LAST_NEWS_TITLE = ""
 
 # === ФУНКЦИИ ===
 def get_latest_news():
@@ -17,20 +19,19 @@ def get_latest_news():
     
     article = soup.find("article")
     if not article:
+        print("[LOG] Новых новостей нет")
         return None
     
     title = article.find("a").text.strip()
-    link = "https://ru.investing.com" + article.find("a")["href"]
     img_tag = article.find("img")
     img_url = img_tag["src"] if img_tag else None
     
-    return {"title": title, "link": link, "img_url": img_url}
+    return {"title": title, "img_url": img_url}
 
 
 def translate_to_hebrew(text):
     """Переводим текст на иврит"""
-    translator = Translator()
-    return translator.translate(text, src="ru", dest="iw").text
+    return GoogleTranslator(source="ru", target="iw").translate(text)
 
 
 def send_to_telegram(news):
@@ -38,15 +39,23 @@ def send_to_telegram(news):
     bot = Bot(token=TOKEN)
     
     title_he = translate_to_hebrew(news["title"])
-    message = f"<b>{title_he}</b>\n\n🔗 <a href='{news['link']}'>Читать полностью</a>"
+    message = f"<b>{title_he}</b>"
     
     if news["img_url"]:
         bot.send_photo(chat_id=CHANNEL_ID, photo=news["img_url"], caption=message, parse_mode="HTML")
     else:
         bot.send_message(chat_id=CHANNEL_ID, text=message, parse_mode="HTML")
+    
+    print(f"[LOG] Опубликована новость: {news['title']}")
 
 
 if __name__ == "__main__":
-    news = get_latest_news()
-    if news:
-        send_to_telegram(news)
+    global LAST_NEWS_TITLE
+    while True:
+        news = get_latest_news()
+        if news and news["title"] != LAST_NEWS_TITLE:
+            send_to_telegram(news)
+            LAST_NEWS_TITLE = news["title"]
+        else:
+            print("[LOG] Новых новостей нет, проверяем снова через 5 минут")
+        time.sleep(300)  # Проверяем новости каждые 5 минут
