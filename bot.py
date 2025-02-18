@@ -4,6 +4,14 @@ from bs4 import BeautifulSoup
 from deep_translator import GoogleTranslator
 from telegram import Bot
 
+# === УСТАНОВКА БИБЛИОТЕКИ ===
+try:
+    from telegram import Bot
+except ImportError:
+    import os
+    os.system("pip install python-telegram-bot --upgrade")
+    from telegram import Bot
+
 # === НАСТРОЙКИ ===
 TOKEN = "7414890925:AAFxyXC2gGMMxu5Z3KVw5BVvYJ75Db2m85c"
 CHANNEL_ID = "-1002447063110"
