@@ -49,17 +49,21 @@ def get_crypto_news():
     articles = soup.find_all("article", class_="js-article-item")[:5]
 
     for article in articles:
-        title = article.find("a", class_="title").get_text(strip=True)
-        summary = article.find("p", class_="text").get_text(strip=True)
-        img_tag = article.find("img")
-        link = article.find("a", class_="title")["href"]
+        try:
+            title = article.find("a", class_="title").get_text(strip=True)
+            summary = article.find("p", class_="text").get_text(strip=True)
+            img_tag = article.find("img")
+            link = article.find("a", class_="title")["href"]
 
-        img_url = img_tag["data-src"] if img_tag and "data-src" in img_tag.attrs else None
+            img_url = img_tag["data-src"] if img_tag and "data-src" in img_tag.attrs else None
 
-        translated_title = translate_text(title)
-        translated_summary = translate_text(summary)
+            translated_title = translate_text(title)
+            translated_summary = translate_text(summary)
 
-        news_list.append({"title": translated_title, "summary": translated_summary, "img": img_url, "link": link})
+            news_list.append({"title": translated_title, "summary": translated_summary, "img": img_url, "link": link})
+
+        except AttributeError:
+            continue  # Пропускаем ошибочные строки
 
     return news_list
 
@@ -82,12 +86,18 @@ async def fetch_crypto_news():
             await bot.send_message(chat_id=CHANNEL_ID, text=text, parse_mode="Markdown")
 
 def get_forex_events():
+    """Парсит экономический календарь с ForexFactory и логирует найденные события."""
     response = requests.get(FOREX_EVENTS_URL, headers=HEADERS)
     soup = BeautifulSoup(response.text, "html.parser")
 
     events = {}
 
     table = soup.find("table", class_="calendar__table")
+
+    if not table:
+        print("❌ Ошибка: Не найдена таблица с событиями.")
+        return {}
+
     rows = table.find_all("tr", class_="calendar__row")
 
     for row in rows:
@@ -101,11 +111,17 @@ def get_forex_events():
                     event = event.replace(eng_term, hebrew_translation)
 
             day = row.find("td", class_="calendar__date").text.strip()
+
             if day not in events:
                 events[day] = []
-            events[day].append(f"🕒 {time} – {event} ({currency})")
-        
-        except AttributeError:
+
+            event_text = f"🕒 {time} – {event} ({currency})"
+            events[day].append(event_text)
+
+            print(f"✅ Добавлено событие: {event_text}")
+
+        except AttributeError as e:
+            print(f"⚠️ Пропущена строка из-за ошибки: {e}")
             continue
 
     return events
@@ -144,7 +160,7 @@ async def weekly_task():
 async def daily_task():
     while True:
         now = datetime.utcnow()
-        target_time = datetime(now.year, now.month, now.day, 6, 0)  # Изменено на 06:00 UTC
+        target_time = datetime(now.year, now.month, now.day, 6, 10)  # Исправлено на 06:10 UTC
         await asyncio.sleep((target_time - now).total_seconds() % 86400)
         await send_daily_forex_events()
 
