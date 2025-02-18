@@ -1,4 +1,5 @@
-requests
+selenium
+webdriver-manager
 beautifulsoup4
 deep_translator
-python-telegram-bot==20.0
+python-telegram-bot
