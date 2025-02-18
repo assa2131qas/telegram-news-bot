@@ -41,12 +41,14 @@ def send_to_telegram(news):
     title_he = translate_to_hebrew(news["title"])
     message = f"<b>{title_he}</b>"
     
-    if news["img_url"]:
-        bot.send_photo(chat_id=CHANNEL_ID, photo=news["img_url"], caption=message, parse_mode="HTML")
-    else:
-        bot.send_message(chat_id=CHANNEL_ID, text=message, parse_mode="HTML")
-    
-    print(f"[LOG] Опубликована новость: {news['title']}")
+    try:
+        if news["img_url"]:
+            bot.send_photo(chat_id=CHANNEL_ID, photo=news["img_url"], caption=message, parse_mode="HTML")
+        else:
+            bot.send_message(chat_id=CHANNEL_ID, text=message, parse_mode="HTML")
+        print(f"[LOG] Опубликована новость: {news['title']}")
+    except Exception as e:
+        print(f"[ERROR] Ошибка при отправке новости: {e}")
 
 
 if __name__ == "__main__":
