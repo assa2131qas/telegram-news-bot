@@ -1,9 +1,13 @@
+import logging
 import requests
 import asyncio
 from bs4 import BeautifulSoup
 from deep_translator import GoogleTranslator
 from aiogram import Bot, Dispatcher
 from datetime import datetime
+
+# Настройка логирования
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 # === НАСТРОЙКИ ===
 TOKEN = "7414890925:AAFxyXC2gGMMxu5Z3KVw5BVvYJ75Db2m85c"
@@ -20,19 +24,16 @@ dp = Dispatcher()
 
 sent_news = set()  # Храним уже отправленные новости
 
-def log(message):
-    """Функция для логирования событий"""
-    print(f"[{datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}] {message}")
-
 def translate_text(text):
     try:
         return GoogleTranslator(source="auto", target="iw").translate(text)
-    except:
+    except Exception as e:
+        logging.error(f"Ошибка перевода: {e}")
         return text  # Возвращаем оригинальный текст при ошибке
 
 def get_crypto_news():
     try:
-        log("🔍 Проверяю наличие новых крипто-новостей...")
+        logging.info("🔍 Проверяю наличие новых крипто-новостей...")
         response = requests.get(CRYPTO_NEWS_URL, headers=HEADERS)
         soup = BeautifulSoup(response.text, "html.parser")
 
@@ -63,13 +64,13 @@ def get_crypto_news():
                 continue  
 
         if news_list:
-            log(f"✅ Найдено {len(news_list)} новых статей")
+            logging.info(f"✅ Найдено {len(news_list)} новых статей")
         else:
-            log("⚠️ Новых новостей не найдено")
+            logging.info("⚠️ Новых новостей не найдено")
 
         return news_list
-    except:
-        log("❌ Ошибка при получении крипто-новостей")
+    except Exception as e:
+        logging.error(f"❌ Ошибка при получении крипто-новостей: {e}")
         return []
 
 async def fetch_crypto_news():
@@ -94,12 +95,12 @@ async def fetch_crypto_news():
                 await bot.send_photo(chat_id=CHANNEL_ID, photo=article["img"], caption=text, parse_mode="Markdown")
             else:
                 await bot.send_message(chat_id=CHANNEL_ID, text=text, parse_mode="Markdown")
-            log(f"📤 Отправлена новость: {article['title']}")
-        except:
-            log(f"❌ Ошибка отправки новости: {article['title']}")
+            logging.info(f"📤 Отправлена новость: {article['title']}")
+        except Exception as e:
+            logging.error(f"❌ Ошибка отправки новости: {e}")
 
     if new_news_count == 0:
-        log("ℹ️ Проверено: новых новостей нет")
+        logging.info("ℹ️ Проверено: новых новостей нет")
 
 async def main():
     while True:
@@ -107,5 +108,6 @@ async def main():
         await asyncio.sleep(300)  # Проверять новости каждые 5 минут
 
 if __name__ == "__main__":
-    log("🚀 Бот запущен и начал мониторинг новостей")
+    logging.info("🚀 Бот запущен и начал мониторинг новостей")
     asyncio.run(main())
+
