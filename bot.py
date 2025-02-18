@@ -1,39 +1,39 @@
-import logging
 import requests
 import asyncio
+import logging
 from bs4 import BeautifulSoup
 from deep_translator import GoogleTranslator
 from aiogram import Bot, Dispatcher
 from datetime import datetime
 
-# Настройка логирования
+# === ЛОГИРОВАНИЕ ===
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 # === НАСТРОЙКИ ===
 TOKEN = "7414890925:AAFxyXC2gGMMxu5Z3KVw5BVvYJ75Db2m85c"
 CHANNEL_ID = "-1002447063110"
-CHANNEL_NAME = "Efasfsa"
-CHANNEL_LINK = "https://t.me/fewf323wwdw"
+CHANNEL_NAME = "CryptoShuk"
+CHANNEL_LINK = "https://t.me/CryptoShuk"
 
-# Источник новостей
+
 CRYPTO_NEWS_URL = "https://ru.investing.com/news/cryptocurrency-news"
 HEADERS = {"User-Agent": "Mozilla/5.0"}
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
+sent_news = set()  # Хранение уже отправленных новостей
 
-sent_news = set()  # Храним уже отправленные новости
-
+# === ФУНКЦИЯ ПЕРЕВОДА ===
 def translate_text(text):
     try:
         return GoogleTranslator(source="auto", target="iw").translate(text)
     except Exception as e:
         logging.error(f"Ошибка перевода: {e}")
-        return text  # Возвращаем оригинальный текст при ошибке
+        return text  # Если ошибка перевода, возвращаем оригинал
 
+# === ПАРСИНГ НОВОСТЕЙ ===
 def get_crypto_news():
     try:
-        logging.info("🔍 Проверяю наличие новых крипто-новостей...")
         response = requests.get(CRYPTO_NEWS_URL, headers=HEADERS)
         soup = BeautifulSoup(response.text, "html.parser")
 
@@ -42,49 +42,52 @@ def get_crypto_news():
 
         for article in articles:
             try:
-                title = article.find("a", class_="title").get_text(strip=True)
-                summary = article.find("p", class_="text").get_text(strip=True)
+                title_tag = article.find("a", class_="title")
+                summary_tag = article.find("p", class_="text")
                 img_tag = article.find("img")
-                link_tag = article.find("a", class_="title")
 
-                link = "https://ru.investing.com" + link_tag["href"] if link_tag and "href" in link_tag.attrs else CRYPTO_NEWS_URL
-                img_url = img_tag["data-src"] if img_tag and "data-src" in img_tag.attrs else None
+                if title_tag and summary_tag:
+                    title = title_tag.get_text(strip=True)
+                    summary = summary_tag.get_text(strip=True)
+                    link = "https://ru.investing.com" + title_tag["href"]
+                    img_url = img_tag["data-src"] if img_tag and "data-src" in img_tag.attrs else None
 
-                translated_title = translate_text(title)
-                translated_summary = translate_text(summary)
+                    translated_title = translate_text(title)
+                    translated_summary = translate_text(summary)
 
-                news_list.append({
-                    "title": translated_title,
-                    "summary": translated_summary,
-                    "img": img_url,
-                    "link": link
-                })
+                    news_list.append({
+                        "title": translated_title,
+                        "summary": translated_summary,
+                        "img": img_url,
+                        "link": link
+                    })
 
-            except AttributeError:
+            except AttributeError as e:
+                logging.warning(f"Пропущена новость из-за ошибки: {e}")
                 continue  
 
-        if news_list:
-            logging.info(f"✅ Найдено {len(news_list)} новых статей")
-        else:
-            logging.info("⚠️ Новых новостей не найдено")
-
+        logging.info(f"✅ Найдено {len(news_list)} новых статей.")
         return news_list
+
     except Exception as e:
-        logging.error(f"❌ Ошибка при получении крипто-новостей: {e}")
+        logging.error(f"❌ Ошибка получения новостей: {e}")
         return []
 
-async def fetch_crypto_news():
+# === ОТПРАВКА НОВОСТЕЙ В TELEGRAM ===
+async def send_crypto_news():
     news = get_crypto_news()
     
-    new_news_count = 0  # Счетчик новых новостей
+    if not news:
+        logging.info("🔎 Проверка завершена: новых новостей нет.")
+        return
 
     for article in news:
         news_id = article["title"]
         if news_id in sent_news:
-            continue  # Если уже отправляли — пропускаем
+            logging.info(f"🔄 Новость уже отправлена: {news_id}")
+            continue  
 
         sent_news.add(news_id)
-        new_news_count += 1
 
         text = f"📰 *{article['title']}*\n📊 {article['summary']}\n\n" \
                f"[Читать далее]({article['link']})\n\n" \
@@ -95,19 +98,17 @@ async def fetch_crypto_news():
                 await bot.send_photo(chat_id=CHANNEL_ID, photo=article["img"], caption=text, parse_mode="Markdown")
             else:
                 await bot.send_message(chat_id=CHANNEL_ID, text=text, parse_mode="Markdown")
+
             logging.info(f"📤 Отправлена новость: {article['title']}")
+
         except Exception as e:
-            logging.error(f"❌ Ошибка отправки новости: {e}")
+            logging.error(f"❌ Ошибка отправки новости в Telegram: {e}")
 
-    if new_news_count == 0:
-        logging.info("ℹ️ Проверено: новых новостей нет")
-
+# === ГЛАВНАЯ ФУНКЦИЯ ===
 async def main():
     while True:
-        await fetch_crypto_news()
-        await asyncio.sleep(300)  # Проверять новости каждые 5 минут
+        await send_crypto_news()
+        await asyncio.sleep(300)  # Проверка новостей каждые 5 минут
 
 if __name__ == "__main__":
-    logging.info("🚀 Бот запущен и начал мониторинг новостей")
     asyncio.run(main())
-
