@@ -12,14 +12,6 @@ logging.basicConfig(
     handlers=[logging.StreamHandler()]
 )
 
-# === УСТАНОВКА БИБЛИОТЕКИ ===
-try:
-    from telegram import Bot
-except ImportError:
-    import os
-    os.system("pip install python-telegram-bot --upgrade")
-    from telegram import Bot
-
 # === НАСТРОЙКИ ===
 TOKEN = "7414890925:AAFxyXC2gGMMxu5Z3KVw5BVvYJ75Db2m85c"
 CHANNEL_ID = "-1002447063110"
@@ -28,8 +20,15 @@ LAST_NEWS_TITLE = None
 
 # === ФУНКЦИИ ===
 def get_latest_news():
-    """Парсим последнюю новость с Investing.com"""
-    headers = {"User-Agent": "Mozilla/5.0"}
+    """Парсим последнюю новость с Investing.com с поддельным User-Agent"""
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Referer": "https://www.google.com/",
+        "DNT": "1",
+        "Connection": "keep-alive"
+    }
+    
     response = requests.get(NEWS_URL, headers=headers)
     
     if response.status_code != 200:
