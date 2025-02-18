@@ -1,6 +1,9 @@
 import time
 import logging
-import requests
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+from webdriver_manager.chrome import ChromeDriverManager
 from bs4 import BeautifulSoup
 from deep_translator import GoogleTranslator
 from telegram import Bot
@@ -18,35 +21,39 @@ CHANNEL_ID = "-1002447063110"
 NEWS_URL = "https://ru.investing.com/news/cryptocurrency-news"
 LAST_NEWS_TITLE = None
 
+# === НАСТРОЙКИ SELENIUM ===
+chrome_options = Options()
+chrome_options.add_argument("--headless")
+chrome_options.add_argument("--disable-gpu")
+chrome_options.add_argument("--no-sandbox")
+chrome_options.add_argument("--disable-dev-shm-usage")
+
 # === ФУНКЦИИ ===
 def get_latest_news():
-    """Парсим последнюю новость с Investing.com с поддельным User-Agent"""
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept-Language": "en-US,en;q=0.9",
-        "Referer": "https://www.google.com/",
-        "DNT": "1",
-        "Connection": "keep-alive"
-    }
-    
-    response = requests.get(NEWS_URL, headers=headers)
-    
-    if response.status_code != 200:
-        logging.error(f"Не удалось получить страницу, код: {response.status_code}")
+    """Парсим последнюю новость с Investing.com через Selenium"""
+    try:
+        service = Service(ChromeDriverManager().install())
+        driver = webdriver.Chrome(service=service, options=chrome_options)
+        driver.get(NEWS_URL)
+        time.sleep(3)  # Ждём загрузку страницы
+        
+        soup = BeautifulSoup(driver.page_source, "html.parser")
+        driver.quit()
+        
+        article = soup.find("article")
+        if not article:
+            logging.info("Новостей нет")
+            return None
+        
+        title = article.find("a").text.strip()
+        img_tag = article.find("img")
+        img_url = img_tag["src"] if img_tag else None
+        
+        logging.info(f"Найдена новость: {title}")
+        return {"title": title, "img_url": img_url}
+    except Exception as e:
+        logging.error(f"Ошибка парсинга: {e}")
         return None
-    
-    soup = BeautifulSoup(response.text, "html.parser")
-    article = soup.find("article")
-    if not article:
-        logging.info("Новостей нет")
-        return None
-    
-    title = article.find("a").text.strip()
-    img_tag = article.find("img")
-    img_url = img_tag["src"] if img_tag else None
-    
-    logging.info(f"Найдена новость: {title}")
-    return {"title": title, "img_url": img_url}
 
 
 def translate_to_hebrew(text):
