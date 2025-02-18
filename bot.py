@@ -2,7 +2,7 @@ import feedparser
 import asyncio
 import logging
 from aiogram import Bot, Dispatcher
-from aiogram.types import ParseMode
+from aiogram.enums import ParseMode
 from datetime import datetime, timedelta
 
 # === ЛОГИРОВАНИЕ ===
