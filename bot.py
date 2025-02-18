@@ -1,96 +1,159 @@
 import requests
-import feedparser
 import asyncio
-import emoji
 from bs4 import BeautifulSoup
 from deep_translator import GoogleTranslator
 from aiogram import Bot, Dispatcher
 from aiogram.types import InputMediaPhoto
+from datetime import datetime, timedelta
 
 # === НАСТРОЙКИ ===
-TOKEN = "7414890925:AAFxyXC2gGMMxu5Z3KVw5BVvYJ75Db2m85c"   # Вставь токен из BotFather
-CHANNEL_ID = "-1002447063110"  # Или Chat ID, если канал приватный
-URL = "https://ru.investing.com/news/cryptocurrency-news"
+TOKEN = "7414890925:AAFxyXC2gGMMxu5Z3KVw5BVvYJ75Db2m85c"
+CHANNEL_ID = "-1002447063110"
+CHANNEL_NAME = "Efasfsa"
+CHANNEL_LINK = "https://t.me/fewf323wwdw"
+
+# Источники новостей
+CRYPTO_NEWS_URL = "https://ru.investing.com/news/cryptocurrency-news"
+FOREX_EVENTS_URL = "https://www.forexfactory.com/calendar"
 HEADERS = {"User-Agent": "Mozilla/5.0"}
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
-# Список отправленных новостей (чтобы не дублировать)
 sent_news = set()
 
+# === Словарь сокращений ===
+event_translations = {
+    "GDP": "תמ\"ג (תוצר מקומי גולמי)",
+    "CPI": "מדד המחירים לצרכן",
+    "Unemployment Rate": "שיעור האבטלה",
+    "FOMC Statement": "הצהרת הוועדה הפדרלית",
+    "Interest Rate Decision": "החלטת ריבית",
+    "Retail Sales": "מכירות קמעונאיות",
+    "NFP": "דו\"ח התעסוקה בארה\"ב",
+    "PMI": "מדד מנהלי הרכש",
+    "Inflation Rate": "שיעור האינפלציה"
+}
+
 def translate_text(text):
-    """Переводит текст на иврит через Google Translate"""
     try:
         return GoogleTranslator(source="auto", target="iw").translate(text)
     except Exception as e:
         return f"Ошибка перевода: {e}"
 
-def add_emojis(text):
-    """Добавляет эмодзи в зависимости от содержания новости"""
-    emoji_dict = {
-        "Bitcoin": "₿", "BTC": "₿", "биткоин": "₿",
-        "Ethereum": "Ξ", "ETH": "Ξ",
-        "рост": "📈", "падение": "📉",
-        "рынок": "📊", "новость": "📰",
-        "инвестиции": "💰", "прогноз": "🔮",
-        "SEC": "⚖️", "ETF": "📑",
-        "проблема": "⚠️", "взлом": "🔓", "атака": "🛑"
-    }
-
-    for word, emo in emoji_dict.items():
-        if word.lower() in text.lower():
-            text += f" {emo}"
-    return text
-
-def get_news():
-    """Парсит новости с Investing.com, включая картинки"""
-    response = requests.get(URL, headers=HEADERS)
+def get_crypto_news():
+    response = requests.get(CRYPTO_NEWS_URL, headers=HEADERS)
     soup = BeautifulSoup(response.text, "html.parser")
 
     news_list = []
-    articles = soup.find_all("article", class_="js-article-item")[:5]  # Берём 5 свежих новостей
+    articles = soup.find_all("article", class_="js-article-item")[:5]
 
     for article in articles:
-        title = article.find("a", class_="title").get_text(strip=True)  # Заголовок
-        summary = article.find("p", class_="text").get_text(strip=True)  # Краткое описание
-        img_tag = article.find("img")  # Находим тег <img>
+        title = article.find("a", class_="title").get_text(strip=True)
+        summary = article.find("p", class_="text").get_text(strip=True)
+        img_tag = article.find("img")
+        link = article.find("a", class_="title")["href"]
 
-        if img_tag and "data-src" in img_tag.attrs:
-            img_url = img_tag["data-src"]  # Получаем ссылку на картинку
-        else:
-            img_url = None  # Если нет картинки
+        img_url = img_tag["data-src"] if img_tag and "data-src" in img_tag.attrs else None
 
-        # Перевод заголовка и описания на иврит + добавление эмодзи
-        translated_title = add_emojis(translate_text(title))
-        translated_summary = add_emojis(translate_text(summary))
+        translated_title = translate_text(title)
+        translated_summary = translate_text(summary)
 
-        news_list.append({"title": translated_title, "summary": translated_summary, "img": img_url})
+        news_list.append({"title": translated_title, "summary": translated_summary, "img": img_url, "link": link})
 
     return news_list
 
-async def fetch_news():
-    """Получает новости и отправляет в Telegram"""
-    news = get_news()
+async def fetch_crypto_news():
+    news = get_crypto_news()
     
     for article in news:
-        news_id = article["title"]  # Уникальный ID (заголовок)
+        news_id = article["title"]
         if news_id in sent_news:
-            continue  # Если уже отправляли — пропускаем
+            continue  
 
-        sent_news.add(news_id)  # Добавляем в список отправленных
-        text = f"📰 *{article['title']}*\n📊 {article['summary']}"
+        sent_news.add(news_id)
+        text = f"📰 *{article['title']}*\n📊 {article['summary']}\n\n" \
+               f"[Читать далее]({article['link']})\n\n" \
+               f"____________\n[{CHANNEL_NAME}]({CHANNEL_LINK})"
 
-        if article["img"]:  # Если есть картинка, отправляем с фото
+        if article["img"]:
             await bot.send_photo(chat_id=CHANNEL_ID, photo=article["img"], caption=text, parse_mode="Markdown")
         else:
             await bot.send_message(chat_id=CHANNEL_ID, text=text, parse_mode="Markdown")
 
-async def main():
-    """Основной цикл"""
+def get_forex_events():
+    response = requests.get(FOREX_EVENTS_URL, headers=HEADERS)
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    events = {}
+
+    table = soup.find("table", class_="calendar__table")
+    rows = table.find_all("tr", class_="calendar__row")
+
+    for row in rows:
+        try:
+            time = row.find("td", class_="calendar__time").text.strip()
+            currency = row.find("td", class_="calendar__currency").text.strip()
+            event = row.find("td", class_="calendar__event").text.strip()
+            
+            for eng_term, hebrew_translation in event_translations.items():
+                if eng_term in event:
+                    event = event.replace(eng_term, hebrew_translation)
+
+            day = row.find("td", class_="calendar__date").text.strip()
+            if day not in events:
+                events[day] = []
+            events[day].append(f"🕒 {time} – {event} ({currency})")
+        
+        except AttributeError:
+            continue
+
+    return events
+
+async def send_weekly_forex_events():
+    events = get_forex_events()
+    
+    message = "📆 *אירועים כלכליים לשבוע הקרוב*\n\n"
+    for day, event_list in events.items():
+        message += f"📍 *{day}*\n" + "\n".join(event_list) + "\n\n"
+
+    message += f"____________\n[{CHANNEL_NAME}]({CHANNEL_LINK})"
+    
+    await bot.send_message(chat_id=CHANNEL_ID, text=message, parse_mode="Markdown")
+
+async def send_daily_forex_events():
+    events = get_forex_events()
+    
+    today = datetime.utcnow().strftime("%b %d")  
+
+    if today in events:
+        message = f"📆 *אירועים כלכליים היום - {today}*\n\n"
+        message += "\n".join(events[today]) + "\n\n"
+        message += f"____________\n[{CHANNEL_NAME}]({CHANNEL_LINK})"
+        
+        await bot.send_message(chat_id=CHANNEL_ID, text=message, parse_mode="Markdown")
+
+async def weekly_task():
     while True:
-        await fetch_news()
-        await asyncio.sleep(300)  # Проверяем новости каждые 5 минут
+        now = datetime.utcnow()
+        next_saturday = now + timedelta(days=(5 - now.weekday()) % 7)
+        target_time = datetime(next_saturday.year, next_saturday.month, next_saturday.day, 18, 0)
+        await asyncio.sleep((target_time - now).total_seconds())
+        await send_weekly_forex_events()
+
+async def daily_task():
+    while True:
+        now = datetime.utcnow()
+        target_time = datetime(now.year, now.month, now.day, 6, 0)  # Изменено на 06:00 UTC
+        await asyncio.sleep((target_time - now).total_seconds() % 86400)
+        await send_daily_forex_events()
+
+async def main():
+    asyncio.create_task(weekly_task())
+    asyncio.create_task(daily_task())
+    while True:
+        await fetch_crypto_news()
+        await asyncio.sleep(300)
 
 if __name__ == "__main__":
     asyncio.run(main())
