@@ -1,4 +1,4 @@
-aiogram
-feedparser
-deep-translator
-emoji
+requests
+beautifulsoup4
+deep_translator
+python-telegram-bot==20.0
