@@ -105,4 +105,6 @@ async def fetch_crypto_news():
 
 def get_forex_events():
     try:
-        response = requests.
+        crypto_response = requests.get(CRYPTO_NEWS_URL, headers=HEADERS)
+        forex_response = requests.get(FOREX_EVENTS_URL, headers=HEADERS)
+
