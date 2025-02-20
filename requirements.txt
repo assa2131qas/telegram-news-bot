@@ -1,5 +1,6 @@
 selenium
 webdriver-manager
+chromium
 beautifulsoup4
 deep_translator
 python-telegram-bot
