@@ -1,5 +1,6 @@
 import time
 import logging
+import random
 import requests
 from bs4 import BeautifulSoup
 from deep_translator import GoogleTranslator
@@ -17,15 +18,19 @@ TOKEN = "7414890925:AAFxyXC2gGMMxu5Z3KVw5BVvYJ75Db2m85c"
 CHANNEL_ID = "-1002447063110"
 NEWS_URL = "https://cryptoslate.com/news/"
 LAST_NEWS_TITLE = None
-HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-}
+USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36"
+]
 
 # === ФУНКЦИИ ===
 def get_latest_news():
     """Парсим последнюю новость с CryptoSlate через requests"""
     try:
-        response = requests.get(NEWS_URL, headers=HEADERS)
+        headers = {"User-Agent": random.choice(USER_AGENTS)}
+        time.sleep(random.uniform(1, 3))  # Добавляем случайную задержку
+        response = requests.get(NEWS_URL, headers=headers)
         if response.status_code != 200:
             logging.error(f"Ошибка запроса: {response.status_code}")
             return None
@@ -82,4 +87,3 @@ if __name__ == "__main__":
         else:
             logging.info("Новостей нет, проверяем снова через 5 минут")
         time.sleep(300)  # Проверяем новости каждые 5 минут
-
