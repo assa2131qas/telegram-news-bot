@@ -4,3 +4,4 @@ chromium
 beautifulsoup4
 deep_translator
 python-telegram-bot
+feedparser
