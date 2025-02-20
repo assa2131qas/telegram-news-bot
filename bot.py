@@ -5,6 +5,7 @@ import requests
 from bs4 import BeautifulSoup
 from deep_translator import GoogleTranslator
 from telegram import Bot
+from datetime import datetime, timedelta
 
 # === НАСТРОЙКА ЛОГИРОВАНИЯ ===
 logging.basicConfig(
@@ -25,32 +26,36 @@ USER_AGENTS = [
 ]
 
 # === ФУНКЦИИ ===
-def get_latest_news():
-    """Парсим последнюю новость с Decrypt через requests"""
+def get_news(last_hours=2):
+    """Парсим новости с Decrypt за последние `last_hours` часов"""
     try:
         headers = {"User-Agent": random.choice(USER_AGENTS)}
         time.sleep(random.uniform(1, 3))  # Добавляем случайную задержку
         response = requests.get(NEWS_URL, headers=headers)
         if response.status_code != 200:
             logging.error(f"Ошибка запроса: {response.status_code}")
-            return None
+            return []
         
         soup = BeautifulSoup(response.text, "html.parser")
-        article = soup.find("a", class_="py-4")  # Ищем блок новости
-        if not article:
+        articles = soup.find_all("a", class_="py-4")  # Ищем блоки новостей
+        if not articles:
             logging.info("Новостей нет или изменена структура страницы")
-            return None
+            return []
         
-        title_tag = article.find("h2")
-        title = title_tag.text.strip() if title_tag else ""
-        img_tag = article.find("img")
-        img_url = img_tag["src"] if img_tag else None
+        news_list = []
+        for article in articles:
+            title_tag = article.find("h2")
+            title = title_tag.text.strip() if title_tag else ""
+            img_tag = article.find("img")
+            img_url = img_tag["src"] if img_tag else None
+            
+            news_list.append({"title": title, "img_url": img_url})
         
-        logging.info(f"Найдена новость: {title}")
-        return {"title": title, "img_url": img_url}
+        logging.info(f"Найдено {len(news_list)} новостей")
+        return news_list
     except Exception as e:
         logging.error(f"Ошибка парсинга: {e}")
-        return None
+        return []
 
 
 def translate_to_hebrew(text):
@@ -78,12 +83,20 @@ def send_to_telegram(news):
 
 
 if __name__ == "__main__":
-    LAST_NEWS_TITLE = None
+    # При первом запуске проверяем новости за последние 2 часа
+    news_list = get_news(last_hours=2)
+    for news in news_list:
+        send_to_telegram(news)
+        time.sleep(3)
+    
+    LAST_NEWS_TITLE = news_list[0]["title"] if news_list else None
+    
+    # Дальше проверяем новости каждые 5 минут
     while True:
-        news = get_latest_news()
-        if news and news["title"] != LAST_NEWS_TITLE:
-            send_to_telegram(news)
-            LAST_NEWS_TITLE = news["title"]
+        news_list = get_news(last_hours=1)
+        if news_list and news_list[0]["title"] != LAST_NEWS_TITLE:
+            send_to_telegram(news_list[0])
+            LAST_NEWS_TITLE = news_list[0]["title"]
         else:
             logging.info("Новостей нет, проверяем снова через 5 минут")
         time.sleep(300)  # Проверяем новости каждые 5 минут
