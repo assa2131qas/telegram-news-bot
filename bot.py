@@ -28,7 +28,7 @@ USER_AGENTS = [
 
 # === ФУНКЦИИ ===
 def get_news():
-    """Парсим последние новости с Decrypt, исключая курсы криптовалют"""
+    """Парсим последние новости с Decrypt, исключая курсы криптовалют и определяя категорию"""
     try:
         headers = {"User-Agent": random.choice(USER_AGENTS)}
         time.sleep(random.uniform(1, 3))  # Добавляем случайную задержку
@@ -46,6 +46,9 @@ def get_news():
         
         news_list = []
         for article in articles:
+            category_tag = article.find("span", class_=re.compile("category"))
+            category = category_tag.text.strip() if category_tag else "Без категории"
+            
             title_tag = article.find("h2")
             title = title_tag.text.strip() if title_tag else ""
             
@@ -60,8 +63,8 @@ def get_news():
                 logging.info(f"Пропускаем нерелевантную новость: {title}")
                 continue
             
-            logging.info(f"Найдена новость: {title} | Описание: {summary} | Изображение: {img_url}")
-            news_list.append({"title": title, "summary": summary, "img_url": img_url})
+            logging.info(f"Найдена новость: [{category}] {title} | Описание: {summary} | Изображение: {img_url}")
+            news_list.append({"category": category, "title": title, "summary": summary, "img_url": img_url})
         
         return news_list
     except Exception as e:
@@ -79,9 +82,10 @@ def translate_to_hebrew(text):
 async def send_to_telegram(news):
     """Отправляем новость в Telegram"""
     bot = Bot(token=TOKEN)
+    category_he = translate_to_hebrew(news["category"])
     title_he = translate_to_hebrew(news["title"])
     summary_he = translate_to_hebrew(news["summary"]) if news["summary"] else ""
-    message = f"<b>{title_he}</b>\n\n{summary_he}"
+    message = f"<b>{category_he}</b>\n<b>{title_he}</b>\n\n{summary_he}"
     
     try:
         if news["img_url"]:
