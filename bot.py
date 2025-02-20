@@ -28,6 +28,7 @@ USER_AGENTS = [
 
 # Список разрешённых категорий
 ALLOWED_CATEGORIES = {"Coins", "Law and Order", "Business", "Technology", "Gaming"}
+CATEGORY_CLASS = "text-cc-pink-2"
 
 # === ФУНКЦИИ ===
 def get_news():
@@ -49,7 +50,7 @@ def get_news():
         
         news_list = []
         for article in articles:
-            category_tag = article.find("span", class_=lambda x: x and "Category" in x)
+            category_tag = article.find("span", class_=CATEGORY_CLASS)
             category = category_tag.text.strip() if category_tag else "Без категории"
             
             if category not in ALLOWED_CATEGORIES:
