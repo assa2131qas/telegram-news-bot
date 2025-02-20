@@ -28,7 +28,7 @@ USER_AGENTS = [
 
 # === ФУНКЦИИ ===
 def get_news():
-    """Парсим последние новости с Decrypt"""
+    """Парсим последние новости с Decrypt, исключая курсы криптовалют"""
     try:
         headers = {"User-Agent": random.choice(USER_AGENTS)}
         time.sleep(random.uniform(1, 3))  # Добавляем случайную задержку
@@ -38,9 +38,7 @@ def get_news():
             return []
         
         soup = BeautifulSoup(response.text, "html.parser")
-        articles = soup.find_all("div", class_="border-b")
-        if not articles:
-            articles = soup.find_all("article")  # Резервный вариант
+        articles = soup.find_all("article")
         
         if not articles:
             logging.info("Новостей нет или изменена структура страницы")
@@ -51,21 +49,19 @@ def get_news():
             title_tag = article.find("h2")
             title = title_tag.text.strip() if title_tag else ""
             
-            summary_tag = article.find("p")  # Ищем краткое описание новости
+            summary_tag = article.find("p")
             summary = summary_tag.text.strip() if summary_tag else ""
-            
-            content_tag = article.find_next_sibling("div")
-            content = content_tag.text.strip() if content_tag else ""
             
             img_tag = article.find("img")
             img_url = img_tag["src"] if img_tag else None
             
+            # Фильтр: убираем новости, состоящие только из чисел (цены криптовалют)
             if not title or re.match(r'^[\d.,$€£]+$', title):
-                logging.info(f"Пропускаем новость без заголовка или с числовым заголовком: {title}")
+                logging.info(f"Пропускаем нерелевантную новость: {title}")
                 continue
             
-            logging.info(f"Найдена новость: {title} | Описание: {summary} | Текст: {content[:100]}... | Изображение: {img_url}")
-            news_list.append({"title": title, "summary": summary, "content": content, "img_url": img_url})
+            logging.info(f"Найдена новость: {title} | Описание: {summary} | Изображение: {img_url}")
+            news_list.append({"title": title, "summary": summary, "img_url": img_url})
         
         return news_list
     except Exception as e:
@@ -85,8 +81,7 @@ async def send_to_telegram(news):
     bot = Bot(token=TOKEN)
     title_he = translate_to_hebrew(news["title"])
     summary_he = translate_to_hebrew(news["summary"]) if news["summary"] else ""
-    content_he = translate_to_hebrew(news["content"]) if news["content"] else ""
-    message = f"<b>{title_he}</b>\n\n{summary_he}\n\n{content_he}"
+    message = f"<b>{title_he}</b>\n\n{summary_he}"
     
     try:
         if news["img_url"]:
