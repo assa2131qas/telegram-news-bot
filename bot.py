@@ -18,6 +18,7 @@ logging.basicConfig(
 )
 
 # === УСТАНОВКА CHROMIUM ===
+logging.info("Устанавливаем Chromium...")
 os.system("apt-get update && apt-get install -y chromium")
 
 # === НАСТРОЙКИ ===
@@ -26,8 +27,11 @@ CHANNEL_ID = "-1002447063110"
 NEWS_URL = "https://ru.investing.com/news/cryptocurrency-news"
 LAST_NEWS_TITLE = None
 
-# === Указываем путь к Chrome ===
-CHROME_PATH = "/usr/bin/google-chrome-stable"
+# === Проверяем, установлен ли Chrome ===
+CHROME_PATH = shutil.which("chromium") or shutil.which("chromium-browser") or "/usr/bin/chromium"
+if not CHROME_PATH:
+    logging.error("Chromium не найден! Убедитесь, что он установлен.")
+    exit(1)
 
 # === НАСТРОЙКИ SELENIUM ===
 chrome_options = Options()
