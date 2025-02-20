@@ -1,7 +1,6 @@
 import time
 import logging
-from selenium import webdriver
-import undetected_chromedriver as uc
+import requests
 from bs4 import BeautifulSoup
 from deep_translator import GoogleTranslator
 from telegram import Bot
@@ -18,20 +17,21 @@ TOKEN = "7414890925:AAFxyXC2gGMMxu5Z3KVw5BVvYJ75Db2m85c"
 CHANNEL_ID = "-1002447063110"
 NEWS_URL = "https://cryptoslate.com/news/"
 LAST_NEWS_TITLE = None
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+}
 
 # === ФУНКЦИИ ===
 def get_latest_news():
-    """Парсим последнюю новость с CryptoSlate через undetected_chromedriver"""
+    """Парсим последнюю новость с CryptoSlate через requests"""
     try:
-        driver = uc.Chrome(headless=True)
-        driver.get(NEWS_URL)
-        time.sleep(5)  # Ждём загрузку страницы
+        response = requests.get(NEWS_URL, headers=HEADERS)
+        if response.status_code != 200:
+            logging.error(f"Ошибка запроса: {response.status_code}")
+            return None
         
-        page_source = driver.page_source
-        driver.quit()
-        
-        soup = BeautifulSoup(page_source, "html.parser")
-        article = soup.find("div", class_="post-list-item")
+        soup = BeautifulSoup(response.text, "html.parser")
+        article = soup.find("a", class_="post-list-item")
         if not article:
             logging.info("Новостей нет или изменена структура страницы")
             return None
@@ -82,3 +82,4 @@ if __name__ == "__main__":
         else:
             logging.info("Новостей нет, проверяем снова через 5 минут")
         time.sleep(300)  # Проверяем новости каждые 5 минут
+
