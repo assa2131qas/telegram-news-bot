@@ -32,6 +32,7 @@ def get_news():
         for entry in feed.entries:
             title = entry.title
             summary = entry.description if 'description' in entry else ""
+            guid = entry.guid if 'guid' in entry else entry.link  # Используем GUID или ссылку
             img_url = None
             
             # Извлечение изображения
@@ -44,7 +45,7 @@ def get_news():
                         break
             
             logging.info(f"Найдена новость: {title}")
-            news_list.append({"title": title, "summary": summary, "img_url": img_url})
+            news_list.append({"guid": guid, "title": title, "summary": summary, "img_url": img_url})
         
         logging.info(f"Найдено {len(news_list)} новостей")
         return news_list
@@ -65,7 +66,7 @@ async def send_to_telegram(news):
     bot = Bot(token=TOKEN)
     title_he = translate_to_hebrew(news["title"])
     summary_he = translate_to_hebrew(news["summary"]) if news["summary"] else ""
-    message = f"<b>{title_he}</b>\n\n{summary_he}"  # Жирный заголовок
+    message = f"<b>{title_he}</b>\n\n{summary_he}"  # Жирный заголовок и отступ
     
     try:
         if news["img_url"]:
@@ -83,17 +84,17 @@ if __name__ == "__main__":
     # Публикуем все доступные новости при старте
     news_list = get_news()
     for news in reversed(news_list):  # Публикуем от старых к новым
-        if news["title"] not in POSTED_NEWS:
+        if news["guid"] not in POSTED_NEWS:
             loop.run_until_complete(send_to_telegram(news))
-            POSTED_NEWS.add(news["title"])
+            POSTED_NEWS.add(news["guid"])
             time.sleep(3)
     
     while True:
         news_list = get_news()
         for news in reversed(news_list):
-            if news["title"] not in POSTED_NEWS:
+            if news["guid"] not in POSTED_NEWS:
                 loop.run_until_complete(send_to_telegram(news))
-                POSTED_NEWS.add(news["title"])
+                POSTED_NEWS.add(news["guid"])
         else:
             logging.info("Новостей нет, проверяем снова через 10 минут")
         time.sleep(600)  # Проверяем новости каждые 10 минут
