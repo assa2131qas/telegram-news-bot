@@ -1,12 +1,10 @@
 import time
 import logging
-import random
-import requests
 import asyncio
-import re
-from bs4 import BeautifulSoup
+import feedparser
 from deep_translator import GoogleTranslator
 from telegram import Bot
+from datetime import datetime, timedelta
 
 # === НАСТРОЙКА ЛОГИРОВАНИЯ ===
 logging.basicConfig(
@@ -18,64 +16,36 @@ logging.basicConfig(
 # === НАСТРОЙКИ ===
 TOKEN = "7414890925:AAFxyXC2gGMMxu5Z3KVw5BVvYJ75Db2m85c"
 CHANNEL_ID = "-1002447063110"
-NEWS_URL = "https://decrypt.co/news"
+RSS_FEED_URL = "https://cryptoslate.com/feed/"
 LAST_NEWS_TITLE = None
-USER_AGENTS = [
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36"
-]
-
-# Список разрешённых категорий
-ALLOWED_CATEGORIES = {"Coins", "Law and Order", "Business", "Technology", "Gaming"}
-CATEGORY_CLASS = "text-cc-pink-2"
 
 # === ФУНКЦИИ ===
 def get_news():
-    """Парсим последние новости с Decrypt, исключая курсы криптовалют и проверяя категории"""
+    """Получаем новости из RSS Feed"""
     try:
-        headers = {"User-Agent": random.choice(USER_AGENTS)}
-        time.sleep(random.uniform(1, 3))  # Добавляем случайную задержку
-        response = requests.get(NEWS_URL, headers=headers)
-        if response.status_code != 200:
-            logging.error(f"Ошибка запроса: {response.status_code}")
-            return []
-        
-        soup = BeautifulSoup(response.text, "html.parser")
-        articles = soup.find_all("article")
-        
-        if not articles:
-            logging.info("Новостей нет или изменена структура страницы")
+        feed = feedparser.parse(RSS_FEED_URL)
+        if 'entries' not in feed:
+            logging.error("Ошибка при разборе RSS ленты")
             return []
         
         news_list = []
-        for article in articles:
-            category_tag = article.find("span", class_=CATEGORY_CLASS)
-            category = category_tag.text.strip() if category_tag else "Без категории"
-            
-            if category not in ALLOWED_CATEGORIES:
-                logging.info(f"Пропускаем новость: {category} не в списке разрешённых")
+        yesterday = datetime.utcnow() - timedelta(days=1)
+        
+        for entry in feed.entries:
+            pub_date = datetime(*entry.published_parsed[:6])
+            if pub_date < yesterday:
                 continue
             
-            title_tag = article.find("h3") or article.find("h2")
-            title = title_tag.text.strip() if title_tag else ""
+            title = entry.title
+            summary = entry.summary
+            img_url = entry.media_content[0]['url'] if 'media_content' in entry and entry.media_content else None
             
-            summary_tag = article.find("p")
-            summary = summary_tag.text.strip() if summary_tag else ""
-            
-            img_tag = article.find("img")
-            img_url = img_tag["src"] if img_tag else None
-            
-            if not title or re.match(r'^[\d.,$€£]+$', title):
-                logging.info(f"Пропускаем нерелевантную новость: {title}")
-                continue
-            
-            logging.info(f"Найдена новость: [{category}] {title} | Описание: {summary} | Изображение: {img_url}")
-            news_list.append({"category": category, "title": title, "summary": summary, "img_url": img_url})
+            logging.info(f"Найдена новость: {title} | {summary} | {img_url}")
+            news_list.append({"title": title, "summary": summary, "img_url": img_url})
         
         return news_list
     except Exception as e:
-        logging.error(f"Ошибка парсинга: {e}")
+        logging.error(f"Ошибка парсинга RSS: {e}")
         return []
 
 
@@ -89,10 +59,9 @@ def translate_to_hebrew(text):
 async def send_to_telegram(news):
     """Отправляем новость в Telegram"""
     bot = Bot(token=TOKEN)
-    category_he = translate_to_hebrew(news["category"])
     title_he = translate_to_hebrew(news["title"])
     summary_he = translate_to_hebrew(news["summary"]) if news["summary"] else ""
-    message = f"<b>{category_he}</b>\n<b>{title_he}</b>\n\n{summary_he}"
+    message = f"<b>{title_he}</b>\n\n{summary_he}"
     
     try:
         if news["img_url"]:
