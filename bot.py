@@ -3,6 +3,7 @@ import logging
 import random
 import requests
 import asyncio
+import re
 from bs4 import BeautifulSoup
 from deep_translator import GoogleTranslator
 from telegram import Bot
@@ -53,13 +54,17 @@ def get_news():
         news_list = []
         for article in articles:
             title_tag = article.find("h2")
-            title = title_tag.text.strip() if title_tag else "(Без заголовка)"
+            title = title_tag.text.strip() if title_tag else ""
             
             summary_tag = article.find("p")  # Ищем краткое описание новости
             summary = summary_tag.text.strip() if summary_tag else ""
             
             img_tag = article.find("img")
             img_url = img_tag["src"] if img_tag else None
+            
+            if not title or re.match(r'^\d+(\.\d+)?\s?[$€£]?$', title):
+                logging.info(f"Пропускаем новость без заголовка или с числовым заголовком: {title}")
+                continue
             
             logging.info(f"Найдена новость: {title} | Описание: {summary} | Изображение: {img_url}")
             news_list.append({"title": title, "summary": summary, "img_url": img_url})
