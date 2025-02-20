@@ -26,8 +26,8 @@ USER_AGENTS = [
 ]
 
 # === ФУНКЦИИ ===
-def get_news(last_hours=2):
-    """Парсим новости с Decrypt за последние `last_hours` часов"""
+def get_news():
+    """Парсим все доступные новости с Decrypt"""
     try:
         headers = {"User-Agent": random.choice(USER_AGENTS)}
         time.sleep(random.uniform(1, 3))  # Добавляем случайную задержку
@@ -83,9 +83,9 @@ def send_to_telegram(news):
 
 
 if __name__ == "__main__":
-    # При первом запуске проверяем новости за последние 2 часа
-    news_list = get_news(last_hours=2)
-    for news in news_list:
+    # При первом запуске проверяем новости за вчерашний день
+    news_list = get_news()
+    for news in reversed(news_list):  # Публикуем от старых к новым
         send_to_telegram(news)
         time.sleep(3)
     
@@ -93,7 +93,7 @@ if __name__ == "__main__":
     
     # Дальше проверяем новости каждые 5 минут
     while True:
-        news_list = get_news(last_hours=1)
+        news_list = get_news()
         if news_list and news_list[0]["title"] != LAST_NEWS_TITLE:
             send_to_telegram(news_list[0])
             LAST_NEWS_TITLE = news_list[0]["title"]
