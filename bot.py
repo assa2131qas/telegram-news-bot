@@ -26,6 +26,9 @@ USER_AGENTS = [
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36"
 ]
 
+# Список разрешённых категорий
+ALLOWED_CATEGORIES = {"Coins", "Law and Order", "Business", "Technology", "Gaming"}
+
 # === ФУНКЦИИ ===
 def get_news():
     """Парсим последние новости с Decrypt, исключая курсы криптовалют и определяя категорию"""
@@ -48,6 +51,10 @@ def get_news():
         for article in articles:
             category_tag = article.find("span", class_=re.compile("category"))
             category = category_tag.text.strip() if category_tag else "Без категории"
+            
+            if category not in ALLOWED_CATEGORIES:
+                logging.info(f"Пропускаем новость: {category} не в списке разрешённых")
+                continue
             
             title_tag = article.find("h2")
             title = title_tag.text.strip() if title_tag else ""
