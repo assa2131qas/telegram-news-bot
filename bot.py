@@ -17,9 +17,11 @@ logging.basicConfig(
     handlers=[logging.StreamHandler()]
 )
 
-# === УСТАНОВКА CHROMIUM ===
-logging.info("Устанавливаем Chromium...")
-os.system("apt-get update && apt-get install -y chromium")
+# === УСТАНОВКА GOOGLE CHROME ===
+logging.info("Устанавливаем Google Chrome...")
+os.system("wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | apt-key add -")
+os.system("echo 'deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main' | tee -a /etc/apt/sources.list.d/google-chrome.list")
+os.system("apt-get update && apt-get install -y google-chrome-stable")
 
 # === НАСТРОЙКИ ===
 TOKEN = "7414890925:AAFxyXC2gGMMxu5Z3KVw5BVvYJ75Db2m85c"
@@ -28,9 +30,9 @@ NEWS_URL = "https://ru.investing.com/news/cryptocurrency-news"
 LAST_NEWS_TITLE = None
 
 # === Проверяем, установлен ли Chrome ===
-CHROME_PATH = shutil.which("chromium") or shutil.which("chromium-browser") or "/usr/bin/chromium"
-if not CHROME_PATH:
-    logging.error("Chromium не найден! Убедитесь, что он установлен.")
+CHROME_PATH = "/usr/bin/google-chrome"
+if not os.path.exists(CHROME_PATH):
+    logging.error("Google Chrome не найден! Убедитесь, что он установлен.")
     exit(1)
 
 # === НАСТРОЙКИ SELENIUM ===
