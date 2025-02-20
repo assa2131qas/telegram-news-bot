@@ -28,6 +28,7 @@ USER_AGENTS = [
 
 # Список разрешённых категорий
 ALLOWED_CATEGORIES = {"Coins", "Law and Order", "Business", "Technology", "Gaming"}
+CATEGORY_CLASS = "text-cc-pink-2"
 
 # === ФУНКЦИИ ===
 def get_news():
@@ -49,7 +50,7 @@ def get_news():
         
         news_list = []
         for article in articles:
-            category_tag = article.find("span", string=lambda text: text and text in ALLOWED_CATEGORIES)
+            category_tag = article.find("span", class_=CATEGORY_CLASS)
             category = category_tag.text.strip() if category_tag else "Без категории"
             
             if category not in ALLOWED_CATEGORIES:
@@ -65,7 +66,6 @@ def get_news():
             img_tag = article.find("img")
             img_url = img_tag["src"] if img_tag else None
             
-            # Фильтр: убираем новости, состоящие только из чисел (цены криптовалют)
             if not title or re.match(r'^[\d.,$€£]+$', title):
                 logging.info(f"Пропускаем нерелевантную новость: {title}")
                 continue
@@ -107,7 +107,6 @@ async def send_to_telegram(news):
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
     
-    # При первом запуске проверяем последние новости
     news_list = get_news()
     for news in reversed(news_list):  # Публикуем от старых к новым
         loop.run_until_complete(send_to_telegram(news))
@@ -115,7 +114,6 @@ if __name__ == "__main__":
     
     LAST_NEWS_TITLE = news_list[0]["title"] if news_list else None
     
-    # Дальше проверяем новости каждые 5 минут
     while True:
         news_list = get_news()
         if news_list and news_list[0]["title"] != LAST_NEWS_TITLE:
