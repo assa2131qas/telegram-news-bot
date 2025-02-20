@@ -35,14 +35,18 @@ def get_latest_news():
         service = Service(ChromeDriverManager().install())
         driver = webdriver.Chrome(service=service, options=chrome_options)
         driver.get(NEWS_URL)
-        time.sleep(3)  # Ждём загрузку страницы
+        time.sleep(5)  # Ждём загрузку страницы
         
-        soup = BeautifulSoup(driver.page_source, "html.parser")
+        page_source = driver.page_source
         driver.quit()
         
+        # Логируем часть HTML для отладки
+        logging.info(f"HTML страницы: {page_source[:1000]}")
+        
+        soup = BeautifulSoup(page_source, "html.parser")
         article = soup.find("article")
         if not article:
-            logging.info("Новостей нет")
+            logging.info("Новостей нет или изменена структура страницы")
             return None
         
         title = article.find("a").text.strip()
