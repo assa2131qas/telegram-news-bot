@@ -17,23 +17,11 @@ logging.basicConfig(
     handlers=[logging.StreamHandler()]
 )
 
-# === УСТАНОВКА GOOGLE CHROME ===
-logging.info("Устанавливаем Google Chrome...")
-os.system("wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | apt-key add -")
-os.system("echo 'deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main' | tee -a /etc/apt/sources.list.d/google-chrome.list")
-os.system("apt-get update && apt-get install -y google-chrome-stable")
-
 # === НАСТРОЙКИ ===
 TOKEN = "7414890925:AAFxyXC2gGMMxu5Z3KVw5BVvYJ75Db2m85c"
 CHANNEL_ID = "-1002447063110"
-NEWS_URL = "https://ru.investing.com/news/cryptocurrency-news"
+NEWS_URL = "https://cryptoslate.com/news/"
 LAST_NEWS_TITLE = None
-
-# === Проверяем, установлен ли Chrome ===
-CHROME_PATH = "/usr/bin/google-chrome"
-if not os.path.exists(CHROME_PATH):
-    logging.error("Google Chrome не найден! Убедитесь, что он установлен.")
-    exit(1)
 
 # === НАСТРОЙКИ SELENIUM ===
 chrome_options = Options()
@@ -41,11 +29,10 @@ chrome_options.add_argument("--headless")
 chrome_options.add_argument("--disable-gpu")
 chrome_options.add_argument("--no-sandbox")
 chrome_options.add_argument("--disable-dev-shm-usage")
-chrome_options.binary_location = CHROME_PATH
 
 # === ФУНКЦИИ ===
 def get_latest_news():
-    """Парсим последнюю новость с Investing.com через Selenium"""
+    """Парсим последнюю новость с CryptoSlate через Selenium"""
     try:
         service = Service(ChromeDriverManager().install())
         driver = webdriver.Chrome(service=service, options=chrome_options)
@@ -55,16 +42,14 @@ def get_latest_news():
         page_source = driver.page_source
         driver.quit()
         
-        # Логируем часть HTML для отладки
-        logging.info(f"HTML страницы: {page_source[:1000]}")
-        
         soup = BeautifulSoup(page_source, "html.parser")
-        article = soup.find("article")
+        article = soup.find("div", class_="post-list-item")
         if not article:
             logging.info("Новостей нет или изменена структура страницы")
             return None
         
-        title = article.find("a").text.strip()
+        title_tag = article.find("h2")
+        title = title_tag.text.strip() if title_tag else ""
         img_tag = article.find("img")
         img_url = img_tag["src"] if img_tag else None
         
@@ -77,7 +62,7 @@ def get_latest_news():
 
 def translate_to_hebrew(text):
     """Переводим текст на иврит"""
-    translated_text = GoogleTranslator(source="ru", target="iw").translate(text)
+    translated_text = GoogleTranslator(source="en", target="iw").translate(text)
     logging.info(f"Переведённый заголовок: {translated_text}")
     return translated_text
 
