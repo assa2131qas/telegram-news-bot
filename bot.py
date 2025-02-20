@@ -5,7 +5,6 @@ import requests
 from bs4 import BeautifulSoup
 from deep_translator import GoogleTranslator
 from telegram import Bot
-from datetime import datetime, timedelta
 
 # === НАСТРОЙКА ЛОГИРОВАНИЯ ===
 logging.basicConfig(
@@ -27,7 +26,7 @@ USER_AGENTS = [
 
 # === ФУНКЦИИ ===
 def get_news():
-    """Парсим все доступные новости с Decrypt"""
+    """Парсим последние новости с Decrypt"""
     try:
         headers = {"User-Agent": random.choice(USER_AGENTS)}
         time.sleep(random.uniform(1, 3))  # Добавляем случайную задержку
@@ -37,7 +36,8 @@ def get_news():
             return []
         
         soup = BeautifulSoup(response.text, "html.parser")
-        articles = soup.find_all("a", class_="py-4")  # Ищем блоки новостей
+        articles = soup.find_all("div", class_="group")  # Проверенный новый селектор
+        
         if not articles:
             logging.info("Новостей нет или изменена структура страницы")
             return []
@@ -49,9 +49,9 @@ def get_news():
             img_tag = article.find("img")
             img_url = img_tag["src"] if img_tag else None
             
+            logging.info(f"Найдена новость: {title}")
             news_list.append({"title": title, "img_url": img_url})
         
-        logging.info(f"Найдено {len(news_list)} новостей")
         return news_list
     except Exception as e:
         logging.error(f"Ошибка парсинга: {e}")
@@ -83,7 +83,7 @@ def send_to_telegram(news):
 
 
 if __name__ == "__main__":
-    # При первом запуске проверяем новости за вчерашний день
+    # При первом запуске проверяем последние новости
     news_list = get_news()
     for news in reversed(news_list):  # Публикуем от старых к новым
         send_to_telegram(news)
