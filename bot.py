@@ -36,7 +36,14 @@ def get_news():
             return []
         
         soup = BeautifulSoup(response.text, "html.parser")
-        articles = soup.find_all("div", class_="group")  # Проверенный новый селектор
+        
+        # Логируем первые 500 символов страницы, чтобы проверить, загружается ли она
+        logging.info("Первые 500 символов HTML: " + soup.prettify()[:500])
+        
+        # Пробуем несколько способов получить новости
+        articles = soup.find_all("div", class_="group")
+        if not articles:
+            articles = soup.find_all("article")  # Резервный вариант
         
         if not articles:
             logging.info("Новостей нет или изменена структура страницы")
@@ -100,3 +107,4 @@ if __name__ == "__main__":
         else:
             logging.info("Новостей нет, проверяем снова через 5 минут")
         time.sleep(300)  # Проверяем новости каждые 5 минут
+
