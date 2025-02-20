@@ -38,11 +38,6 @@ def get_news():
             return []
         
         soup = BeautifulSoup(response.text, "html.parser")
-        
-        # Проверяем правильность парсинга
-        logging.info("Первые 500 символов HTML: " + soup.prettify()[:500])
-        
-        # Пробуем несколько способов получить новости
         articles = soup.find_all("div", class_="border-b")
         if not articles:
             articles = soup.find_all("article")  # Резервный вариант
@@ -59,15 +54,18 @@ def get_news():
             summary_tag = article.find("p")  # Ищем краткое описание новости
             summary = summary_tag.text.strip() if summary_tag else ""
             
+            content_tag = article.find_next_sibling("div")
+            content = content_tag.text.strip() if content_tag else ""
+            
             img_tag = article.find("img")
             img_url = img_tag["src"] if img_tag else None
             
-            if not title or re.match(r'^\d+(\.\d+)?\s?[$€£]?$', title):
+            if not title or re.match(r'^[\d.,$€£]+$', title):
                 logging.info(f"Пропускаем новость без заголовка или с числовым заголовком: {title}")
                 continue
             
-            logging.info(f"Найдена новость: {title} | Описание: {summary} | Изображение: {img_url}")
-            news_list.append({"title": title, "summary": summary, "img_url": img_url})
+            logging.info(f"Найдена новость: {title} | Описание: {summary} | Текст: {content[:100]}... | Изображение: {img_url}")
+            news_list.append({"title": title, "summary": summary, "content": content, "img_url": img_url})
         
         return news_list
     except Exception as e:
@@ -87,11 +85,12 @@ async def send_to_telegram(news):
     bot = Bot(token=TOKEN)
     title_he = translate_to_hebrew(news["title"])
     summary_he = translate_to_hebrew(news["summary"]) if news["summary"] else ""
-    message = f"<b>{title_he}</b>\n\n{summary_he}"
+    content_he = translate_to_hebrew(news["content"]) if news["content"] else ""
+    message = f"<b>{title_he}</b>\n\n{summary_he}\n\n{content_he}"
     
     try:
         if news["img_url"]:
-            await bot.send_photo(chat_id=CHANNEL_ID, photo=news["img_url"], caption=message, parse_mode="HTML")
+            await bot.send_photo(chat_id=CHANNEL_ID, photo=news["img_url"], caption=message[:1024], parse_mode="HTML")
         else:
             await bot.send_message(chat_id=CHANNEL_ID, text=message, parse_mode="HTML")
         logging.info(f"Опубликована новость: {news['title']}")
