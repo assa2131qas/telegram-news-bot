@@ -54,11 +54,15 @@ def get_news():
         for article in articles:
             title_tag = article.find("h2")
             title = title_tag.text.strip() if title_tag else "(Без заголовка)"
+            
+            summary_tag = article.find("p")  # Ищем краткое описание новости
+            summary = summary_tag.text.strip() if summary_tag else ""
+            
             img_tag = article.find("img")
             img_url = img_tag["src"] if img_tag else None
             
-            logging.info(f"Найдена новость: {title} | Изображение: {img_url}")
-            news_list.append({"title": title, "img_url": img_url})
+            logging.info(f"Найдена новость: {title} | Описание: {summary} | Изображение: {img_url}")
+            news_list.append({"title": title, "summary": summary, "img_url": img_url})
         
         return news_list
     except Exception as e:
@@ -69,7 +73,7 @@ def get_news():
 def translate_to_hebrew(text):
     """Переводим текст на иврит"""
     translated_text = GoogleTranslator(source="en", target="iw").translate(text)
-    logging.info(f"Переведённый заголовок: {translated_text}")
+    logging.info(f"Переведённый текст: {translated_text}")
     return translated_text
 
 
@@ -77,7 +81,8 @@ async def send_to_telegram(news):
     """Отправляем новость в Telegram"""
     bot = Bot(token=TOKEN)
     title_he = translate_to_hebrew(news["title"])
-    message = f"<b>{title_he}</b>"
+    summary_he = translate_to_hebrew(news["summary"]) if news["summary"] else ""
+    message = f"<b>{title_he}</b>\n\n{summary_he}"
     
     try:
         if news["img_url"]:
