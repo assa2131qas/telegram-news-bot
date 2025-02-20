@@ -1,11 +1,7 @@
 import time
 import logging
-import shutil
-import os
 from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-from webdriver_manager.chrome import ChromeDriverManager
+import undetected_chromedriver as uc
 from bs4 import BeautifulSoup
 from deep_translator import GoogleTranslator
 from telegram import Bot
@@ -23,19 +19,11 @@ CHANNEL_ID = "-1002447063110"
 NEWS_URL = "https://cryptoslate.com/news/"
 LAST_NEWS_TITLE = None
 
-# === НАСТРОЙКИ SELENIUM ===
-chrome_options = Options()
-chrome_options.add_argument("--headless")
-chrome_options.add_argument("--disable-gpu")
-chrome_options.add_argument("--no-sandbox")
-chrome_options.add_argument("--disable-dev-shm-usage")
-
 # === ФУНКЦИИ ===
 def get_latest_news():
-    """Парсим последнюю новость с CryptoSlate через Selenium"""
+    """Парсим последнюю новость с CryptoSlate через undetected_chromedriver"""
     try:
-        service = Service(ChromeDriverManager().install())
-        driver = webdriver.Chrome(service=service, options=chrome_options)
+        driver = uc.Chrome(headless=True)
         driver.get(NEWS_URL)
         time.sleep(5)  # Ждём загрузку страницы
         
