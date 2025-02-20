@@ -29,11 +29,11 @@ def get_news():
             return []
         
         news_list = []
-        yesterday = datetime.utcnow() - timedelta(days=1)
+        two_days_ago = datetime.utcnow() - timedelta(days=2)
         
         for entry in feed.entries:
             pub_date = datetime(*entry.published_parsed[:6])
-            if pub_date < yesterday:
+            if pub_date < two_days_ago:
                 continue
             
             title = entry.title
@@ -52,6 +52,7 @@ def get_news():
             logging.info(f"Найдена новость: {title} | {summary} | {img_url}")
             news_list.append({"title": title, "summary": summary, "img_url": img_url})
         
+        logging.info(f"Найдено {len(news_list)} новостей за последние 2 дня")
         return news_list
     except Exception as e:
         logging.error(f"Ошибка парсинга RSS: {e}")
