@@ -1,5 +1,6 @@
 import time
 import logging
+import shutil
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
@@ -21,12 +22,16 @@ CHANNEL_ID = "-1002447063110"
 NEWS_URL = "https://ru.investing.com/news/cryptocurrency-news"
 LAST_NEWS_TITLE = None
 
+# === Указываем путь к Chrome ===
+CHROME_PATH = shutil.which("google-chrome") or shutil.which("chromium") or "/usr/bin/chromium-browser"
+
 # === НАСТРОЙКИ SELENIUM ===
 chrome_options = Options()
 chrome_options.add_argument("--headless")
 chrome_options.add_argument("--disable-gpu")
 chrome_options.add_argument("--no-sandbox")
 chrome_options.add_argument("--disable-dev-shm-usage")
+chrome_options.binary_location = CHROME_PATH
 
 # === ФУНКЦИИ ===
 def get_latest_news():
