@@ -37,8 +37,17 @@ def get_news():
                 continue
             
             title = entry.title
-            summary = entry.summary
-            img_url = entry.media_content[0]['url'] if 'media_content' in entry and entry.media_content else None
+            summary = entry.summary if 'summary' in entry else ""
+            img_url = None
+            
+            # Извлечение изображения
+            if 'media_content' in entry and entry.media_content:
+                img_url = entry.media_content[0]['url']
+            elif 'links' in entry:
+                for link in entry.links:
+                    if link.get('rel') == 'enclosure' and 'image' in link.get('type', ''):
+                        img_url = link['href']
+                        break
             
             logging.info(f"Найдена новость: {title} | {summary} | {img_url}")
             news_list.append({"title": title, "summary": summary, "img_url": img_url})
