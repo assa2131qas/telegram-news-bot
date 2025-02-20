@@ -1,6 +1,7 @@
 import time
 import logging
 import shutil
+import os
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
@@ -16,6 +17,9 @@ logging.basicConfig(
     handlers=[logging.StreamHandler()]
 )
 
+# === УСТАНОВКА CHROMIUM ===
+os.system("apt-get update && apt-get install -y chromium")
+
 # === НАСТРОЙКИ ===
 TOKEN = "7414890925:AAFxyXC2gGMMxu5Z3KVw5BVvYJ75Db2m85c"
 CHANNEL_ID = "-1002447063110"
@@ -23,7 +27,7 @@ NEWS_URL = "https://ru.investing.com/news/cryptocurrency-news"
 LAST_NEWS_TITLE = None
 
 # === Указываем путь к Chrome ===
-CHROME_PATH = shutil.which("google-chrome") or shutil.which("chromium") or "/usr/bin/chromium-browser"
+CHROME_PATH = "/usr/bin/google-chrome-stable"
 
 # === НАСТРОЙКИ SELENIUM ===
 chrome_options = Options()
