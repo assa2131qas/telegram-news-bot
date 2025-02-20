@@ -2,6 +2,7 @@ import time
 import logging
 import random
 import requests
+import asyncio
 from bs4 import BeautifulSoup
 from deep_translator import GoogleTranslator
 from telegram import Bot
@@ -37,11 +38,11 @@ def get_news():
         
         soup = BeautifulSoup(response.text, "html.parser")
         
-        # Логируем первые 500 символов страницы, чтобы проверить, загружается ли она
+        # Проверяем правильность парсинга
         logging.info("Первые 500 символов HTML: " + soup.prettify()[:500])
         
         # Пробуем несколько способов получить новости
-        articles = soup.find_all("div", class_="group")
+        articles = soup.find_all("div", class_="border-b")
         if not articles:
             articles = soup.find_all("article")  # Резервный вариант
         
@@ -52,11 +53,11 @@ def get_news():
         news_list = []
         for article in articles:
             title_tag = article.find("h2")
-            title = title_tag.text.strip() if title_tag else ""
+            title = title_tag.text.strip() if title_tag else "(Без заголовка)"
             img_tag = article.find("img")
             img_url = img_tag["src"] if img_tag else None
             
-            logging.info(f"Найдена новость: {title}")
+            logging.info(f"Найдена новость: {title} | Изображение: {img_url}")
             news_list.append({"title": title, "img_url": img_url})
         
         return news_list
@@ -72,28 +73,29 @@ def translate_to_hebrew(text):
     return translated_text
 
 
-def send_to_telegram(news):
+async def send_to_telegram(news):
     """Отправляем новость в Telegram"""
     bot = Bot(token=TOKEN)
-    
     title_he = translate_to_hebrew(news["title"])
     message = f"<b>{title_he}</b>"
     
     try:
         if news["img_url"]:
-            bot.send_photo(chat_id=CHANNEL_ID, photo=news["img_url"], caption=message, parse_mode="HTML")
+            await bot.send_photo(chat_id=CHANNEL_ID, photo=news["img_url"], caption=message, parse_mode="HTML")
         else:
-            bot.send_message(chat_id=CHANNEL_ID, text=message, parse_mode="HTML")
+            await bot.send_message(chat_id=CHANNEL_ID, text=message, parse_mode="HTML")
         logging.info(f"Опубликована новость: {news['title']}")
     except Exception as e:
         logging.error(f"Ошибка при отправке новости: {e}")
 
 
 if __name__ == "__main__":
+    loop = asyncio.get_event_loop()
+    
     # При первом запуске проверяем последние новости
     news_list = get_news()
     for news in reversed(news_list):  # Публикуем от старых к новым
-        send_to_telegram(news)
+        loop.run_until_complete(send_to_telegram(news))
         time.sleep(3)
     
     LAST_NEWS_TITLE = news_list[0]["title"] if news_list else None
@@ -102,9 +104,8 @@ if __name__ == "__main__":
     while True:
         news_list = get_news()
         if news_list and news_list[0]["title"] != LAST_NEWS_TITLE:
-            send_to_telegram(news_list[0])
+            loop.run_until_complete(send_to_telegram(news_list[0]))
             LAST_NEWS_TITLE = news_list[0]["title"]
         else:
             logging.info("Новостей нет, проверяем снова через 5 минут")
         time.sleep(300)  # Проверяем новости каждые 5 минут
-
