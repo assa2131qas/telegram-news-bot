@@ -49,14 +49,14 @@ def get_news():
         
         news_list = []
         for article in articles:
-            category_tag = article.find("span", class_=re.compile("category"))
+            category_tag = article.find("span", class_=lambda x: x and "Category" in x)
             category = category_tag.text.strip() if category_tag else "Без категории"
             
             if category not in ALLOWED_CATEGORIES:
                 logging.info(f"Пропускаем новость: {category} не в списке разрешённых")
                 continue
             
-            title_tag = article.find("h2")
+            title_tag = article.find("h3") or article.find("h2")
             title = title_tag.text.strip() if title_tag else ""
             
             summary_tag = article.find("p")
