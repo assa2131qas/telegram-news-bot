@@ -16,7 +16,7 @@ logging.basicConfig(
 # === НАСТРОЙКИ ===
 TOKEN = "7414890925:AAFxyXC2gGMMxu5Z3KVw5BVvYJ75Db2m85c"
 CHANNEL_ID = "-1002447063110"
-NEWS_URL = "https://cryptoslate.com/news/"
+NEWS_URL = "https://decrypt.co/news"
 LAST_NEWS_TITLE = None
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -26,7 +26,7 @@ USER_AGENTS = [
 
 # === ФУНКЦИИ ===
 def get_latest_news():
-    """Парсим последнюю новость с CryptoSlate через requests"""
+    """Парсим последнюю новость с Decrypt через requests"""
     try:
         headers = {"User-Agent": random.choice(USER_AGENTS)}
         time.sleep(random.uniform(1, 3))  # Добавляем случайную задержку
@@ -36,7 +36,7 @@ def get_latest_news():
             return None
         
         soup = BeautifulSoup(response.text, "html.parser")
-        article = soup.find("a", class_="post-list-item")
+        article = soup.find("a", class_="py-4")  # Ищем блок новости
         if not article:
             logging.info("Новостей нет или изменена структура страницы")
             return None
