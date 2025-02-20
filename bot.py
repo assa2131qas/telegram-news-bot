@@ -28,11 +28,10 @@ USER_AGENTS = [
 
 # Список разрешённых категорий
 ALLOWED_CATEGORIES = {"Coins", "Law and Order", "Business", "Technology", "Gaming"}
-CATEGORY_CLASS = "text-cc-pink-2"
 
 # === ФУНКЦИИ ===
 def get_news():
-    """Парсим последние новости с Decrypt, исключая курсы криптовалют и определяя категорию"""
+    """Парсим последние новости с Decrypt, исключая курсы криптовалют и проверяя категории"""
     try:
         headers = {"User-Agent": random.choice(USER_AGENTS)}
         time.sleep(random.uniform(1, 3))  # Добавляем случайную задержку
@@ -50,7 +49,7 @@ def get_news():
         
         news_list = []
         for article in articles:
-            category_tag = article.find("span", class_=CATEGORY_CLASS)
+            category_tag = article.find("span", string=lambda text: text and text in ALLOWED_CATEGORIES)
             category = category_tag.text.strip() if category_tag else "Без категории"
             
             if category not in ALLOWED_CATEGORIES:
